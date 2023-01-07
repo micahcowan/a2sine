@@ -14,10 +14,12 @@ COUT	 = $FDED
 MsgAddrL = $6
 MsgAddrH = $7
 PrevCV   = $8
+PrevBASL = $1D
+PrevBASH = $1E
 
 VerticalCenter = 12
 Amplitude = 12
-Delay     = $15
+Delay     = $28
 
 SineStart:
 	jsr Mon_HOME
@@ -33,37 +35,36 @@ SineStart:
         jsr Mon_VTAB
         lda #18
         sta Mon_CH
+        ; Add to BASL
+        clc
+        adc Mon_BASL
+        sta Mon_BASL
 SineAnimLoop:
 	;; Print the message
-        pha
-	    jsr PrintMsg
-        pla
-        sta Mon_CH
+        jsr EraseMsg
+	jsr PrintMsg
         ;; Find the new vert position
         lda #Amplitude
         jsr Sine
         clc
         ; Add to "center"
         adc #VerticalCenter
-        ;; Is the new vert the same as before?
-        cmp PrevCV
-        ;;  Yes: skip erase
-        beq @skipErase
-        ;;  No: erase prev message before printing new
-	pha
-            jsr EraseMsg
-        pla
+
 	sta Mon_CV
         sta PrevCV
-        jmp @drawDone
-@skipErase:
-	;; We've skipped erase, but we still need
-        ;;  to take up approx the same time.
-        ;;  use it by uselessly redrawing
-        ;;  the print message.
-        jsr PrintMsg
-@drawDone:
+        
+        lda Mon_BASL
+        sta PrevBASL
+        lda Mon_BASH
+        sta PrevBASH
+
         jsr Mon_VTAB
+        ; Add to BASL
+        clc
+        lda Mon_CH
+        adc Mon_BASL
+        sta Mon_BASL
+        ;
         jsr Advance ; advance sine period (x-reg)
 	lda Mon_CH ; Load for message-printing
         jmp SineAnimLoop
@@ -76,14 +77,14 @@ Advance:
         inx
         rts
 
-EraseMsg: ; erase and return to original CH
+EraseMsg: ; print and return to original CH
 	ldy #0
         lda Mon_CH
         pha
 @lp:        lda (MsgAddrL),y
             beq @out
-            lda #$A0 ; (space)
-            jsr COUT
+            lda #$A0
+            sta (PrevBASL),y
             iny
             bne @lp
 @out:   pla
@@ -96,7 +97,7 @@ PrintMsg: ; print and return to original CH
         pha
 @lp:        lda (MsgAddrL),y
             beq @out
-            jsr COUT
+            sta (Mon_BASL),y
             iny
             bne @lp
 @out:   pla
