@@ -96,29 +96,23 @@ Advance:
 EraseMsg: ; print and return to original CH
 	ldy #0
         lda Mon_CH
-        pha
-@lp:        lda (MsgAddrL),y
-            beq @out
-            lda #$A0
-            sta (PrevBASL),y
-            iny
-            bne @lp
-@out:   pla
-        sta Mon_CH
-      	rts
+@lp:    lda (MsgAddrL),y
+        beq @out
+        lda #$A0
+        sta (PrevBASL),y
+        iny
+        bne @lp
+@out:   rts
 
 PrintMsg: ; print and return to original CH
 	ldy #0
         lda Mon_CH
-        pha
-@lp:        lda (MsgAddrL),y
-            beq @out
-            sta (Mon_BASL),y
-            iny
-            bne @lp
-@out:   pla
-        sta Mon_CH
-      	rts
+@lp:    lda (MsgAddrL),y
+        beq @out
+        sta (Mon_BASL),y
+        iny
+        bne @lp
+@out:   rts
 
 EmitYSpaces:
 	dey
@@ -131,6 +125,9 @@ EmitYSpaces:
         bne @spaceLoop
 @spaceEnd:
 	rts
+
+Message:
+	.byte "HELLO",0
 
 ;; Returns a sinusoidal value, scaled to A-reg
 ;;   A-reg: scale (returned value will never be
@@ -157,7 +154,10 @@ ScaleFrac:
         sta @loopGuard
         tya ; move scale to A-reg
         sta SineScale
-        asl ; multiply scale * 2, for pos/neg
+        asl ; multiply scale * 2
+            ; because afterward we'll subtract
+            ; to go from twice the range, unsigned,
+            ; to pos/neg signed, at correct range
 @loop:  lsr
 	pha
             ; Do we have a set bit?
@@ -184,7 +184,7 @@ ScaleFrac:
             sta @loopGuard
         pla
     	bcc @loop
-        ;
+        ; Adjust back down to pos/neg
         lda ScaledH
         sec
         sbc SineScale
@@ -201,9 +201,6 @@ ScaledL: ; the value we're constructing
 	.byte 0
 ScaledH:
 	.byte 0
-
-Message:
-	.byte "HELLO",0
 
 SineTable:
 .byte $80, $83, $86, $89, $8C, $8F, $92, $95
