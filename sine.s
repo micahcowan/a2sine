@@ -1,7 +1,9 @@
 ;#define CFGFILE apple2-asm.cfg
 ;#link "signlib.s"
+;#link "sinecalc.s"
 
-.import Sine
+
+.import Sine, SineCalcRun, SineCalcTimersAdvance
 
 .org $803
 
@@ -18,8 +20,6 @@ MsgAddrL = $6
 MsgAddrH = $7
 PrevBASL = $8
 PrevBASH = $9
-VPhase   = $1D
-HPhase   = $1E
 
 VCenter    = 12
 VAmp      = 12
@@ -29,10 +29,6 @@ Delay     = $20
 
 SineStart:
 	jsr Mon_HOME
-        ldx #0
-        stx VPhase
-        ldx #$40
-        stx HPhase
         lda #<Message
         sta MsgAddrL
         lda #>Message
@@ -56,7 +52,10 @@ SineAnimLoop:
         sta PrevBASL
         lda Mon_BASH
         sta PrevBASH
-        
+
+.if 0
+VPhase   = $1D
+HPhase   = $1E
         ;; Find the new vert position
         lda #VAmp
         ldx VPhase
@@ -74,6 +73,17 @@ SineAnimLoop:
         clc
         adc #HCenter
         sta Mon_CH
+.else
+	lda #<SC_VObj
+        ldy #>SC_VObj
+        jsr SineCalcRun
+        sta Mon_CV
+        
+        lda #<SC_HObj
+        ldy #>SC_HObj
+        jsr SineCalcRun
+        sta Mon_CH
+.endif
 
 	; Recalc screen locations
         jsr Mon_VTAB
@@ -92,8 +102,9 @@ Advance:
         ; freaking fast. Slow it down.
         lda #Delay
         jsr Mon_WAIT
-        inc VPhase
-        inc HPhase
+        lda #<Timers
+        ldy #>Timers
+        jsr SineCalcTimersAdvance
         rts
 
 EraseMsg: ; print and return to original CH
@@ -131,3 +142,37 @@ EmitYSpaces:
 
 Message:
 	.byte "HELLO",0
+
+HCalc:
+	.byte HAmp
+        .byte 0
+        .byte 'T' | $80 ; timer 0
+        .byte 'S' | $80 ; sine
+        .byte HCenter
+        .byte '+' | $80 ; add
+        .byte 'R' | $80 ; return
+        
+VCalc:
+	.byte VAmp
+        .byte 0
+        .byte 'T' | $80 ; timer 0
+        .byte $40
+        .byte '+' | $80 ; add #$40
+        .byte 'S' | $80 ; sine
+        .byte VCenter
+        .byte '+' | $80 ; add center
+        .byte 'R' | $80 ; return
+
+SC_HObj:
+	.word HCalc
+        ; timer info: 1 timer: rise / run, val (offset)
+        .word Timers
+
+SC_VObj:
+	.word VCalc
+        ; timer info: 1 timer: rise / run, val
+        .word Timers
+        
+Timers:
+	.byte 1
+        .byte 1, 1, 0
