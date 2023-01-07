@@ -13,27 +13,32 @@ COUT	 = $FDED
 
 MsgAddrL = $6
 MsgAddrH = $7
-PrevCV   = $8
-PrevBASL = $1D
-PrevBASH = $1E
+PrevBASL = $8
+PrevBASH = $9
+VPhase   = $1D
+HPhase   = $1E
 
-VerticalCenter = 12
-Amplitude = 12
-Delay     = $28
+VCenter    = 12
+VAmp      = 12
+HCenter   = 20
+HAmp      = 8
+Delay     = $20
 
 SineStart:
 	jsr Mon_HOME
         ldx #0
+        stx VPhase
+        ldx #$40
+        stx HPhase
         lda #<Message
         sta MsgAddrL
         lda #>Message
         sta MsgAddrH
         ; Set up message position
-        lda #VerticalCenter
+        lda #VCenter
         sta Mon_CV
-        sta PrevCV
         jsr Mon_VTAB
-        lda #18
+        lda #HCenter
         sta Mon_CH
         ; Add to BASL
         clc
@@ -43,28 +48,38 @@ SineAnimLoop:
 	;; Print the message
         jsr EraseMsg
 	jsr PrintMsg
-        ;; Find the new vert position
-        lda #Amplitude
-        jsr Sine
-        clc
-        ; Add to "center"
-        adc #VerticalCenter
-
-	sta Mon_CV
-        sta PrevCV
         
         lda Mon_BASL
         sta PrevBASL
         lda Mon_BASH
         sta PrevBASH
+        
+        ;; Find the new vert position
+        lda #VAmp
+        ldx VPhase
+        jsr Sine
+        clc
+        ; Add to "center"
+        adc #VCenter
+	sta Mon_CV
+        
+        ;; Find the new horiz position
+        
+        lda #HAmp
+        ldx HPhase
+        jsr Sine
+        clc
+        adc #HCenter
+        sta Mon_CH
 
+	; Recalc screen locations
         jsr Mon_VTAB
         ; Add to BASL
         clc
         lda Mon_CH
         adc Mon_BASL
         sta Mon_BASL
-        ;
+        
         jsr Advance ; advance sine period (x-reg)
 	lda Mon_CH ; Load for message-printing
         jmp SineAnimLoop
@@ -74,7 +89,8 @@ Advance:
         ; freaking fast. Slow it down.
         lda #Delay
         jsr Mon_WAIT
-        inx
+        inc VPhase
+        inc HPhase
         rts
 
 EraseMsg: ; print and return to original CH
@@ -120,6 +136,7 @@ EmitYSpaces:
 ;;   A-reg: scale (returned value will never be
 ;;          greater or equal in magnitude)
 ;;   X-reg: phase
+;;   Y-reg: DESTROYED
 ;;   RETURNS: A * sine( X-reg * PI / 128 )
 Sine:
 	tay
