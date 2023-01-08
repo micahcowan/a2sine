@@ -2,7 +2,7 @@
 
 ;; Returns a sinusoidal value, scaled to A-reg
 ;;   A-reg: scale (returned value will never be
-;;          greater or equal in magnitude)
+;;          greater in magnitude)
 ;;   X-reg: phase
 ;;   Y-reg: DESTROYED
 ;;   RETURNS: A * sine( X-reg * PI / 128 )
@@ -80,6 +80,11 @@ ScaleFracUns:
             sta @loopGuard
         pla
     	bcc @loop
+        ; Round to nearest
+        lda ScaledL
+        bpl @roundDone
+        inc ScaledH
+@roundDone:
         ; Adjust back down to pos/neg
         lda ScaledH
         sec

@@ -27,7 +27,7 @@ PrevBASL = $8
 PrevBASH = $9
 
 VCenter   = 12
-VAmp      = 12
+VAmp      = 11
 HCenter   = 17
 HAmp      = 17
 Delay     = $19
@@ -333,11 +333,11 @@ HTickTock:
         .byte 0
 	.byte HAmp
         .byte '-' | $80
-        .byte 4
+        .byte 5
         .byte 'T' | $80
         .byte 'S' | $80
         ; end amplitude
-        .byte 5
+        .byte 6
         .byte 'T' | $80 ; timer 0
         .byte 'S' | $80 ; sine
         .byte HCenter
@@ -347,13 +347,13 @@ HTickTock:
 VTickTock:
 	; sinusoidal amp input to "main" movement
 	.byte VAmp
-        .byte 4
+        .byte 5
         .byte 'T' | $80
         .byte $40
         .byte '+' | $80
         .byte 'S' | $80
         ; end amplitude
-        .byte 5
+        .byte 6
         .byte 'T' | $80 ; timer 0
         .byte 'S' | $80 ; sine
         .byte VCenter-1
@@ -382,10 +382,11 @@ SC_VObj:
         .word Timers
         
 Timers:
-	.byte 6
+	.byte 7
 	.byte 1,1,0,0
 	.byte 39,41,0,0
         .byte 28,20,0,0
 	.byte 1,2,0,0
-        .byte 1,40,0,0
-        .byte 7,4,0,0
+        .byte 1,8,0,0
+        .byte 1,41,0,0
+        .byte 9,5,0,0
