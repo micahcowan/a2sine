@@ -23,9 +23,9 @@ PrevBASH = $9
 
 VCenter    = 12
 VAmp      = 12
-HCenter   = 20
-HAmp      = 8
-Delay     = $20
+HCenter   = 17
+HAmp      = 17
+Delay     = $1
 
 SineStart:
 	jsr Mon_HOME
@@ -175,4 +175,6 @@ SC_VObj:
         
 Timers:
 	.byte 1
-        .byte 1, 1, 0
+	.byte 1
+        .byte 1
+        .byte 0
