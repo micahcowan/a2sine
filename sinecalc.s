@@ -35,6 +35,9 @@ IsInstr:; If we get here, it's an instruction.
 :       cmp #'+'
 	bne :+
         jmp HandleAdd
+:       cmp #'-'
+        bne :+
+        jmp HandleSub
 :       cmp #'S'
         bne :+
         jmp HandleSine
@@ -231,6 +234,18 @@ HandleAdd:
         jsr PopVal
         clc
         adc @tmp
+        jsr PushVal
+        jmp NextInstr
+@tmp: .byte 0
+
+; Input: A B
+; Output: DIFF
+HandleSub:
+	jsr PopVal
+        sta @tmp
+        jsr PopVal
+        sec
+        sbc @tmp
         jsr PushVal
         jmp NextInstr
 @tmp: .byte 0

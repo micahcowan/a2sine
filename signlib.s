@@ -13,8 +13,33 @@ Sine:
         jsr ScaleFrac
         rts
 
-;; Sets A to Y * A/256, where
 ScaleFrac:
+	pha
+	tya
+        
+        cpy #0
+        bmi @handleNeg
+        pla
+	jmp ScaleFracUns
+
+@handleNeg:
+	; reverse scale 
+        sec
+        sbc #1
+        eor #$FF
+        tay
+        pla
+        jsr ScaleFracUns
+        sta @tmp
+        lda #0
+        sec
+        sbc @tmp
+@out:   rts
+@tmp:
+	.byte 0
+        
+;; Sets A to Y * A/256, where
+ScaleFracUns:
         ;
         sta SineFracL
         lda #0

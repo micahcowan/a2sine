@@ -281,29 +281,111 @@ VWobble:
         .byte VCenter
         .byte '+' | $80 ; add center
         .byte 'R' | $80 ; return
+        
+HSpiral:
+	.byte HAmp
+        ; subtract a few
+        .byte 8
+        .byte '-' | $80
+        .byte 4
+        .byte 4
+        .byte 'T' | $80 ; timer 0
+        .byte $60
+        .byte '+' | $80
+        .byte $60
+        .byte '+' | $80
+        .byte 'S' | $80 ; sine
+        .byte '+' | $80
+        .byte 0
+        .byte 'T' | $80 ; timer 0
+        .byte 'S' | $80 ; sine
+        .byte HCenter
+        .byte '+' | $80 ; add
+        .byte 'R' | $80 ; return
+        
+VSpiral:
+	.byte VAmp
+        ; subtract a few
+        .byte 5
+        .byte '-' | $80
+        .byte 4
+        .byte 4
+        .byte 'T' | $80 ; timer 0
+        .byte $60
+        .byte '+' | $80
+        .byte $60
+        .byte '+' | $80
+        .byte 'S' | $80 ; sine
+        .byte '+' | $80
+        .byte 0
+        .byte 'T' | $80 ; timer 0
+        .byte $60
+        .byte '+' | $80 ; add #$C0
+        .byte $60
+        .byte '+' | $80
+        .byte 'S' | $80 ; sine
+        .byte VCenter
+        .byte '+' | $80 ; add center
+        .byte 'R' | $80 ; return
+
+HTickTock:
+	; sinusoidal amp input to "main" movement
+        .byte 0
+	.byte HAmp
+        .byte '-' | $80
+        .byte 4
+        .byte 'T' | $80
+        .byte 'S' | $80
+        ; end amplitude
+        .byte 5
+        .byte 'T' | $80 ; timer 0
+        .byte 'S' | $80 ; sine
+        .byte HCenter
+        .byte '+' | $80 ; add
+        .byte 'R' | $80 ; return
+
+VTickTock:
+	; sinusoidal amp input to "main" movement
+	.byte VAmp
+        .byte 4
+        .byte 'T' | $80
+        .byte $40
+        .byte '+' | $80
+        .byte 'S' | $80
+        ; end amplitude
+        .byte 5
+        .byte 'T' | $80 ; timer 0
+        .byte 'S' | $80 ; sine
+        .byte VCenter-1
+        .byte '+' | $80 ; add
+        .byte 'R' | $80 ; return
 
 AnimsStart:
+.word HTickTock, VTickTock
 .word HCircle, VCircle
 .word HTreble, VTreble
 .word HCircle, VWobble
+.word HSpiral, VSpiral
 AnimsEnd:
 
 CurAnim:
 	.word AnimsStart
 
 SC_HObj:
-	.word HCircle
+	.word HTickTock
         ; timer info: 1 timer: rise / run, val (offset)
         .word Timers
 
 SC_VObj:
-	.word VCircle
+	.word VTickTock
         ; timer info: 1 timer: rise / run, val
         .word Timers
         
 Timers:
-	.byte 4
+	.byte 6
 	.byte 1,1,0,0
 	.byte 39,41,0,0
         .byte 28,20,0,0
 	.byte 1,2,0,0
+        .byte 1,40,0,0
+        .byte 7,4,0,0
