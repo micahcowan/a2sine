@@ -5,6 +5,8 @@
 
 .import Sine, SineCalcRun, SineCalcTimersAdvance
 
+.macpack apple2
+
 .org $803
 
 Mon_HOME = $FC58
@@ -16,12 +18,15 @@ Mon_VTAB = $FC22
 Mon_WAIT = $FCA8
 COUT	 = $FDED
 
+KBD	 = $C000
+KBDSTROBE= $C010
+
 MsgAddrL = $6
 MsgAddrH = $7
 PrevBASL = $8
 PrevBASH = $9
 
-VCenter    = 12
+VCenter   = 12
 VAmp      = 12
 HCenter   = 17
 HAmp      = 17
@@ -44,6 +49,34 @@ SineStart:
         adc Mon_BASL
         sta Mon_BASL
 SineAnimLoop:
+	;; Print "any key" message
+        lda Mon_BASL
+        pha
+        lda Mon_BASH
+        pha
+        lda MsgAddrL
+        pha
+        lda MsgAddrH
+        pha
+        ;
+        lda #$00
+        sta Mon_BASL
+        lda #$04
+        sta Mon_BASH
+        lda #<PressKeyMsg
+        sta MsgAddrL
+        lda #>PressKeyMsg
+        sta MsgAddrH
+        jsr PrintMsg
+        ;
+        pla
+        sta MsgAddrH
+        pla
+        sta MsgAddrL
+        pla
+        sta Mon_BASH
+        pla
+        sta Mon_BASL
 	;; Print the message
         jsr EraseMsg
 	jsr PrintMsg
@@ -53,27 +86,6 @@ SineAnimLoop:
         lda Mon_BASH
         sta PrevBASH
 
-.if 0
-VPhase   = $1D
-HPhase   = $1E
-        ;; Find the new vert position
-        lda #VAmp
-        ldx VPhase
-        jsr Sine
-        clc
-        ; Add to "center"
-        adc #VCenter
-	sta Mon_CV
-        
-        ;; Find the new horiz position
-        
-        lda #HAmp
-        ldx HPhase
-        jsr Sine
-        clc
-        adc #HCenter
-        sta Mon_CH
-.else
 	lda #<SC_VObj
         ldy #>SC_VObj
         jsr SineCalcRun
@@ -83,7 +95,6 @@ HPhase   = $1E
         ldy #>SC_HObj
         jsr SineCalcRun
         sta Mon_CH
-.endif
 
 	; Recalc screen locations
         jsr Mon_VTAB
@@ -105,7 +116,72 @@ Advance:
         lda #<Timers
         ldy #>Timers
         jsr SineCalcTimersAdvance
+        jsr CheckAnimSwitch
         rts
+
+CheckAnimSwitch:
+	bit KBD
+        bpl @done
+        bit KBDSTROBE
+        ; Key is pressed! Advance to next animation
+        lda CurAnim
+        clc
+        adc #4
+        sta CurAnim
+        lda CurAnim+1
+        adc #0 ; for carry
+        sta CurAnim+1
+        ; Did we go past the end?
+        cmp #>AnimsEnd
+        bcc @setCurrent
+        bne @loopToFirst ; past the end, go to first anim
+        ; If we get here, hi byte is eq, check lo
+        lda CurAnim
+        cmp #<AnimsEnd
+        bcc @setCurrent
+@loopToFirst:
+	lda #<AnimsStart
+        sta CurAnim
+        lda #>AnimsStart
+        sta CurAnim+1
+@setCurrent:
+	txa
+        pha
+        tya
+        pha
+	lda $0
+        pha
+        lda $1
+        pha
+            lda CurAnim
+            sta $0
+            lda CurAnim+1
+            sta $1
+            ;
+            ldy #0
+            lda ($0),y
+            sta SC_HObj,y
+            iny
+            lda ($0),y
+            sta SC_HObj,y
+            iny
+            lda ($0),y
+            ldx #0
+            sta SC_VObj,x
+            inx
+            iny
+            lda ($0),y
+            sta SC_VObj,x
+        pla
+        sta $1
+        pla
+        sta $0
+        pla
+        tay
+        pla
+        tax
+@done:
+	rts
 
 EraseMsg: ; print and return to original CH
 	ldy #0
@@ -141,9 +217,19 @@ EmitYSpaces:
 	rts
 
 Message:
-	.byte "HELLO",0
+	scrcode "HELLO"
+        .byte 0
+	.byte 'H' & $1F
+        .byte 'E' & $1F
+        .byte 'L' & $1F
+        .byte 'L' & $1F
+        .byte 'O' & $1F
+        .byte 0
+PressKeyMsg:
+	scrcode "PRESS ANY KEY"
+        .byte 0
 
-HCalc:
+HCircle:
 	.byte HAmp
         .byte 0
         .byte 'T' | $80 ; timer 0
@@ -151,27 +237,73 @@ HCalc:
         .byte HCenter
         .byte '+' | $80 ; add
         .byte 'R' | $80 ; return
+
+HTreble:
+	.byte HAmp
+        .byte 3
+        .byte 'T' | $80 ; timer 0
+        .byte 'S' | $80 ; sine
+        .byte HCenter
+        .byte '+' | $80 ; add
+        .byte 'R' | $80 ; return
         
-VCalc:
+VCircle:
+	.byte VAmp
+        .byte 0
+        .byte 'T' | $80 ; timer 0
+        .byte $60
+        .byte '+' | $80 ; add #$C0
+        .byte $60
+        .byte '+' | $80
+        .byte 'S' | $80 ; sine
+        .byte VCenter
+        .byte '+' | $80 ; add center
+        .byte 'R' | $80 ; return
+        
+VTreble:
+	.byte VAmp
+        .byte 2
+        .byte 'T' | $80 ; timer 0
+        .byte $40
+        .byte '+' | $80 ; add #$40
+        .byte 'S' | $80 ; sine
+        .byte VCenter
+        .byte '+' | $80 ; add center
+        .byte 'R' | $80 ; return
+        
+VWobble:
 	.byte VAmp
         .byte 1
         .byte 'T' | $80 ; timer 0
+        .byte $40
+        .byte '+' | $80 ; add #$40
         .byte 'S' | $80 ; sine
         .byte VCenter
         .byte '+' | $80 ; add center
         .byte 'R' | $80 ; return
 
+AnimsStart:
+.word HCircle, VCircle
+.word HTreble, VTreble
+.word HCircle, VWobble
+AnimsEnd:
+
+CurAnim:
+	.word AnimsStart
+
 SC_HObj:
-	.word HCalc
+	.word HCircle
         ; timer info: 1 timer: rise / run, val (offset)
         .word Timers
 
 SC_VObj:
-	.word VCalc
+	.word VCircle
         ; timer info: 1 timer: rise / run, val
         .word Timers
         
 Timers:
-	.byte 2
+	.byte 4
 	.byte 1,1,0,0
-        .byte 1,1,$40,0
+	.byte 39,41,0,0
+        .byte 28,20,0,0
+	.byte 1,2,0,0
