@@ -107,18 +107,80 @@ SineCalcTimersAdvance:
             sta TimersPtr
             lda SavedY
             sta TimersPtr+1
-            ;
-            ; FIXME: for now, assume there is 1 timer
-            ldy #3
+            ; Load how many timers
+            ldy #0
             lda (TimersPtr),y
+            sta NumTimers
+            ; Bump the TimersPtr to point at 1st tmr
+            inc TimersPtr
+            bne @nextTimer
+            inc TimersPtr+1
+@nextTimer:
+            ; Load this timer's info
+            ldy #0
+@nextFld:
+            lda (TimersPtr),y
+            sta TimerRise,y
+            iny
+            cpy #4
+            bne @nextFld
+            ; done copying, back up a couple fields
+            dey
+            dey
+            ; Advance the timer by rise/run
+            lda TimerRise
             clc
-            adc #1
+            adc TimerRem
+            sec
+@recheck:
+            sbc TimerRun
+            bcc @timerDone
+            ; If we're here, carry is set and
+            ;  our rise has met or exceeded run.
+            ; increment the timer.
+            inc TimerVal
+            ; Circle back and check if it
+            ; still succeeds!
+            jmp @recheck
+@timerDone:
+	    ; We exceeded the divisor. Add back
+            ; and then save.
+            adc TimerRun ; carry guaranteed unset
+            pha
+            lda TimerVal
             sta (TimersPtr),y
+            ; Store the remainder
+            pla
+            iny
+            sta (TimersPtr),y
+            ; Are we out of timers?
+            dec NumTimers
+            beq @allTimersDone ; Yes: branch
+            ; No: adjust TimersPtr and loop back
+            lda TimersPtr
+            clc
+            adc #4
+            sta TimersPtr
+            lda TimersPtr+1
+            adc #0 ; for carry
+            sta TimersPtr+1
+            bne @nextTimer ; always
+@allTimersDone:
         pla
         sta TimersPtr+1
         pla
         sta TimersPtr
 	rts
+NumTimers:
+	.byte 0
+TimerRise:
+	.byte 0
+TimerRun:
+	.byte 0
+TimerVal:
+	.byte 0
+TimerRem:
+	.byte 0
 
 PushVal:
 	;; WARNING: unguarded stack access!
@@ -140,8 +202,13 @@ PopVal:
 ; Output: TVAL
 TimerPop:
 	jsr PopVal
-	; FIXME: For now, assume it was timer 0 of 1
-        ldy #3
+	; Multiply by 4
+        asl
+        asl
+        clc
+        adc #3
+        tay
+        ;
         lda (TimersPtr),y
         jsr PushVal
 	jmp NextInstr

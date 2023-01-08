@@ -25,7 +25,7 @@ VCenter    = 12
 VAmp      = 12
 HCenter   = 17
 HAmp      = 17
-Delay     = $1
+Delay     = $19
 
 SineStart:
 	jsr Mon_HOME
@@ -154,10 +154,8 @@ HCalc:
         
 VCalc:
 	.byte VAmp
-        .byte 0
+        .byte 1
         .byte 'T' | $80 ; timer 0
-        .byte $40
-        .byte '+' | $80 ; add #$40
         .byte 'S' | $80 ; sine
         .byte VCenter
         .byte '+' | $80 ; add center
@@ -174,7 +172,6 @@ SC_VObj:
         .word Timers
         
 Timers:
-	.byte 1
-	.byte 1
-        .byte 1
-        .byte 0
+	.byte 2
+	.byte 1,1,0,0
+        .byte 1,1,$40,0
