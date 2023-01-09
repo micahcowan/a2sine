@@ -48,8 +48,9 @@ SineStart:
         clc
         adc Mon_BASL
         sta Mon_BASL
+        jsr LoadNextAnim
 SineAnimLoop:
-	;; Print "any key" message
+	;; Print static messages
         lda Mon_BASL
         pha
         lda Mon_BASH
@@ -63,9 +64,23 @@ SineAnimLoop:
         sta Mon_BASL
         lda #$04
         sta Mon_BASH
+        ; Print "PRESS ANY KEY"
         lda #<PressKeyMsg
         sta MsgAddrL
         lda #>PressKeyMsg
+        sta MsgAddrH
+        jsr PrintMsg
+        ; Print effect number
+        lda CurAnimNum
+        ora #$B0
+        ldy #20
+        sta (Mon_BASL),y
+        ; Print animation label
+        lda #22
+        sta Mon_BASL
+        lda CurLabel
+        sta MsgAddrL
+        lda CurLabel+1
         sta MsgAddrH
         jsr PrintMsg
         ;
@@ -121,12 +136,14 @@ Advance:
 
 CheckAnimSwitch:
 	bit KBD
-        bpl @done
+        bpl LoadAnimDone
         bit KBDSTROBE
+LoadNextAnim:
         ; Key is pressed! Advance to next animation
+        inc CurAnimNum
         lda CurAnim
         clc
-        adc #4
+        adc #6
         sta CurAnim
         lda CurAnim+1
         adc #0 ; for carry
@@ -140,6 +157,8 @@ CheckAnimSwitch:
         cmp #<AnimsEnd
         bcc @setCurrent
 @loopToFirst:
+	lda #0
+        sta CurAnimNum
 	lda #<AnimsStart
         sta CurAnim
         lda #>AnimsStart
@@ -172,6 +191,12 @@ CheckAnimSwitch:
             iny
             lda ($0),y
             sta SC_VObj,x
+            iny
+            lda ($0),y
+            sta CurLabel
+            iny
+            lda ($0),y
+            sta CurLabel+1
         pla
         sta $1
         pla
@@ -180,7 +205,7 @@ CheckAnimSwitch:
         tay
         pla
         tax
-@done:
+LoadAnimDone:
 	rts
 
 EraseMsg: ; print and return to original CH
@@ -361,23 +386,43 @@ VTickTock:
         .byte 'R' | $80 ; return
 
 AnimsStart:
-.word HTickTock, VTickTock
-.word HCircle, VCircle
-.word HTreble, VTreble
-.word HCircle, VWobble
-.word HSpiral, VSpiral
+.word HCircle, VCircle, LCircle
+.word HTreble, VTreble, LTreble
+.word HCircle, VWobble, LWobble
+.word HTickTock, VTickTock, LTickTock
+.word HSpiral, VSpiral, LSpiral
 AnimsEnd:
 
+LCircle:
+	scrcode "CIRCLE    "
+        .byte 0
+LTreble:
+	scrcode "TREBLE    "
+        .byte 0
+LWobble:
+	scrcode "WOBBLE    "
+        .byte 0
+LTickTock:
+	scrcode "TICK-TOCK"
+        .byte 0
+LSpiral:
+	scrcode "SPIRAL    "
+        .byte 0
+
+CurAnimNum:
+	.byte 0
 CurAnim:
-	.word AnimsStart
+	.word AnimsEnd
+CurLabel:
+	.word 0
 
 SC_HObj:
-	.word HTickTock
+	.word 0
         ; timer info: 1 timer: rise / run, val (offset)
         .word Timers
 
 SC_VObj:
-	.word VTickTock
+	.word 0
         ; timer info: 1 timer: rise / run, val
         .word Timers
         
@@ -385,8 +430,8 @@ Timers:
 	.byte 7
 	.byte 1,1,0,0
 	.byte 39,41,0,0
-        .byte 28,20,0,0
-	.byte 1,2,0,0
+        .byte 25,18,0,0
+	.byte 17,29,0,0
         .byte 1,8,0,0
         .byte 1,41,0,0
-        .byte 9,5,0,0
+        .byte 11,5,0,0
